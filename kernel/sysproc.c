@@ -6,7 +6,9 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-
+#include "sysinfo.h"
+extern uint64 count_process(void);
+extern uint64 count_free_mem(void);
 uint64
 sys_exit(void)
 {
@@ -94,4 +96,31 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_trace(void)
+{
+  int mask;
+  if(argint(0, &mask) < 0)// 通过读取进程的 trapframe，获得 mask 参数
+    return -1;
+  printf("sys_trace,n is %d\n",mask);
+  struct proc *p = myproc();// 设置调用进程的 syscall_trace mask
+  p ->trace_mask = mask;
+  return 0;
+}
+
+uint64 
+sys_sysinfo(void)
+{
+  struct sysinfo info;
+  uint64 addr;
+  struct proc *p = myproc();
+  info.nproc = count_process();
+  info.freemem = count_free_mem();
+  if(argaddr(0, &addr) < 0)
+    return -1;
+  if(copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+  return 0;
 }
